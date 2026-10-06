@@ -7,7 +7,7 @@ ZIP ini ialah **versi Netlify + Firebase**, bukan arkib Cloudflare/Sites yang as
 - Log masuk guru: Google atau e-mel/kata laluan melalui Firebase Authentication. Akaun e-mel perlu disahkan.
 - Murid: Firebase Authentication Anonymous, kod sesi dan nama panggilan sahaja.
 - Aktiviti, sesi, jawapan dan semakan guru: Firebase Firestore melalui Netlify Functions.
-- AI: Gemini API di pelayan sahaja; pilihan manual tersedia tanpa kunci AI.
+- AI: OpenAI API di pelayan sahaja; pilihan manual tersedia tanpa kunci AI.
 - Tiada projek Firebase, kunci akaun atau kunci AI dimasukkan dalam ZIP.
 - Data kelas dari versi hosting terdahulu **tidak dipindahkan** secara automatik.
 
@@ -51,14 +51,14 @@ Dalam tetapan environment variables projek Netlify, masukkan nilai berikut. Pili
 | `VITE_FIREBASE_PROJECT_ID` | Firebase web config `projectId` | Ya |
 | `VITE_FIREBASE_APP_ID` | Firebase web config `appId` | Ya |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Seluruh kandungan service-account JSON, termasuk kurungan `{}` | Ya, digunakan di server sahaja |
-| `GEMINI_API_KEY` | Kunci API Gemini daripada Google AI Studio | Untuk AI sahaja, digunakan di server |
-| `GEMINI_MODEL` | Model Gemini; lalai `gemini-3.8-flash` | Pilihan |
+| `OPENAI_API_KEY` | Kunci API OpenAI Platform | Untuk AI sahaja, digunakan di server |
+| `OPENAI_MODEL` | Model OpenAI; lalai `gpt-4.1-mini` | Pilihan |
 
 Pendaftaran guru terbuka kepada sesiapa yang mempunyai akaun Google atau mendaftar dengan e-mel/kata laluan. Akaun e-mel perlu mengesahkan alamatnya sebelum log masuk. Oleh sebab pendaftaran terbuka, sesiapa yang mempunyai akaun sah boleh menggunakan ruang guru. Setiap guru hanya boleh melihat aktiviti dan sesi miliknya; murid tanpa nama tidak boleh masuk sebagai guru.
 
 Untuk `FIREBASE_SERVICE_ACCOUNT_JSON`, salin objek JSON lengkap, tanpa membungkus keseluruhan nilai dalam tanda petikan tambahan. Nilai `private_key` hendaklah kekal dengan escape `\n` yang sah dalam JSON. Jika Netlify Free tidak membenarkan tanda **Contains secret values**, anda boleh simpan sebagai pemboleh ubah biasa. Nilai itu tidak dihantar kepada pelayar kerana tiada awalan `VITE_`, tetapi pemilik dan kolaborator yang boleh mengurus tetapan projek Netlify mungkin dapat melihatnya. Hadkan akses projek kepada orang yang dipercayai dan jangan letak kunci itu di GitHub.
 
-Nilai `VITE_` Firebase ialah konfigurasi awam, bukan kunci Admin SDK. Kunci Admin SDK dan Gemini mesti kekal pada pelayan. Penggunaan Firebase, Netlify Functions dan Gemini API tertakluk pada kuota/caj akaun anda.
+Nilai `VITE_` Firebase ialah konfigurasi awam, bukan kunci Admin SDK. Kunci Admin SDK dan OpenAI mesti kekal pada pelayan. Penggunaan Firebase, Netlify Functions dan OpenAI API tertakluk pada kuota/caj akaun anda. Langganan ChatGPT dan penggunaan API OpenAI mempunyai billing berasingan.
 
 ### 5. Benarkan domain Netlify dalam Firebase
 1. Selepas Netlify memberikan domain seperti `nama-projek.netlify.app`, buka **Firebase Authentication → Settings → Authorized domains**.
@@ -122,12 +122,12 @@ npm run dev
 | Popup disekat | Benarkan popup dan cuba log masuk semula |
 | Firebase pelayan belum dikonfigurasi | Isi `FIREBASE_SERVICE_ACCOUNT_JSON` dengan skop Functions |
 | Operasi tidak berjaya | Semak Netlify Functions logs, Firestore `(default)`, dan kelayakan akaun perkhidmatan |
-| AI belum disambungkan | Isi `GEMINI_API_KEY`, redeploy, atau sunting aktiviti secara manual |
+| AI belum disambungkan | Isi `OPENAI_API_KEY`, redeploy, atau sunting aktiviti secara manual |
 | Kamera / mikrofon gagal | Benarkan akses, gunakan pelayar yang menyokongnya, atau pilih butang / teks |
 
 ## Apa yang telah diuji
 
-Semakan TypeScript, binaan Vite, pembungkusan fungsi pelayan serta ujian peraturan pemarkahan, payload murid dan senarai guru. Sambungan sebenar Firebase / Google / Gemini, deployment dalam akaun Netlify anda, serta kamera/mikrofon pada peranti sekolah **belum dapat diuji tanpa konfigurasi akaun anda**.
+Semakan TypeScript, binaan Vite, pembungkusan fungsi pelayan serta ujian peraturan pemarkahan, payload murid dan senarai guru. Sambungan sebenar Firebase / Google / OpenAI, deployment dalam akaun Netlify anda, serta kamera/mikrofon pada peranti sekolah **belum dapat diuji tanpa konfigurasi akaun anda**.
 
 ## Dokumentasi rasmi
 

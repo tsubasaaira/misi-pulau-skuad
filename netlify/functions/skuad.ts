@@ -18,10 +18,10 @@ export default async function handler(req:Request):Promise<Response>{
  try{
   const url=new URL(req.url);const op=url.searchParams.get('op');
   if(!['GET','POST'].includes(req.method))return json({error:'Kaedah tidak dibenarkan.'},405);
-  if(req.method==='GET'&&op==='me'&&!req.headers.get('authorization'))return json({user:null,ai:!!process.env.GEMINI_API_KEY});
+  if(req.method==='GET'&&op==='me'&&!req.headers.get('authorization'))return json({user:null,ai:!!process.env.OPENAI_API_KEY});
   const db=setup();const user=await identity(req);const now=new Date().toISOString();
   if(req.method==='GET'){
-   if(op==='me'){if(user.firebase.sign_in_provider==='anonymous')return json({user:null,ai:!!process.env.GEMINI_API_KEY});teacher(user);return json({user:{name:user.name||'Cikgu',email:user.email},ai:!!process.env.GEMINI_API_KEY});}
+   if(op==='me'){if(user.firebase.sign_in_provider==='anonymous')return json({user:null,ai:!!process.env.OPENAI_API_KEY});teacher(user);return json({user:{name:user.name||'Cikgu',email:user.email},ai:!!process.env.OPENAI_API_KEY});}
    if(op==='restore'||op==='progress'){const {p,s}=await participation(db,user.uid);const responses=await pupilResponses(db,p.id);if(op==='progress')return json({status:s.status,responses});return json({pupil:{id:p.id,nickname:p.nickname,avatar:JSON.parse(p.avatar)},session:{id:s.id,title:s.title,status:s.status,sequential:s.sequential},activity:studentActivity(s.activity),responses});}
    teacher(user);
    if(op==='responses'){const {data:s,ref}=await ownedSession(db,url.searchParams.get('session'),user.uid);const [ps,rs]=await Promise.all([db.collection('pupils').where('session_id','==',ref.id).get(),db.collection('responses').where('session_id','==',ref.id).get()]);const pupils=ps.docs.map(d=>({id:d.id,nickname:d.data().nickname,avatar:d.data().avatar,created:d.data().created}));const names=new Map(pupils.map(p=>[p.id,p.nickname]));const responses=rs.docs.map(d=>({id:d.id,...d.data(),nickname:names.get(d.data().pupil_id)||'Murid'}));return json({pupils,responses,updated:now});}
@@ -51,21 +51,19 @@ export default async function handler(req:Request):Promise<Response>{
   if(b.op==='status'){const {ref}=await ownedSession(db,b.id,user.uid);if(!['Aktif','Belum Bermula','Tamat'].includes(b.status))throw new AppError('Status tidak sah.');await ref.update({status:b.status});return json({saved:true});}
   if(b.op==='review'){const ref=db.collection('responses').doc(docId(b.id));const r=await ref.get();if(!r.exists)throw new AppError('Jawapan tidak ditemui.',404);await ownedSession(db,r.data()!.session_id,user.uid);const score=Number(b.score);if(!Number.isInteger(score)||score<0||score>1)throw new AppError('Markah mesti 0 atau 1.');await ref.update({final_score:score,review:'Disahkan guru',feedback:String(b.feedback||'Telah disemak oleh cikgu.').slice(0,1000)});return json({saved:true});}
   if(b.op==='generate'){
-   if(!process.env.GEMINI_API_KEY)throw new AppError('Penjana Gemini belum disambungkan. Tambah GEMINI_API_KEY dalam Netlify dan deploy semula.',503);
+   if(!process.env.OPENAI_API_KEY)throw new AppError('Penjana OpenAI belum disambungkan. Tambah OPENAI_API_KEY dalam Netlify dan deploy semula.',503);
    const input=activitySchema.parse(b.activity);
-   const instructions='Anda pembina draf aktiviti Bahasa Melayu inklusif sekolah rendah. Hasilkan objek JSON sahaja dengan semua keys dan jenis data yang diminta. Ikuti tema, tahun, kemahiran, kesukaran, SK, SP, sokongan dan EMK. Tulis kandungan baharu yang sesuai umur. questions tepat 3 soalan berdasarkan audio, moves tepat 3 arahan pilihan. Setiap soalan mengandungi question, options (3 string), answer (indeks 0-2) dan feedback. Sertakan objectives, note, audio pendek, speaking bercapah, ideas (3 contoh), frame, examples dan assessment. Jangan nilai loghat, kelajuan atau kelantangan. Ini draf untuk guru semak. Input aktiviti: '+JSON.stringify(input);
-   const model=process.env.GEMINI_MODEL||'gemini-3.8-flash';
-   const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-   const requestBody=JSON.stringify({contents:[{parts:[{text:instructions}]}],generationConfig:{responseMimeType:'application/json',temperature:0.7}});
+   const system='Anda pembina draf aktiviti Bahasa Melayu inklusif sekolah rendah. Hasilkan JSON sahaja dengan semua keys dan jenis data seperti input. Ikuti tema title, year, skill, difficulty, sk, sp, supports dan emk. Tulis kandungan baharu sesuai umur. questions tepat 3 soalan berdasarkan audio, moves tepat 3 arahan pilihan. Setiap soalan mengandungi question, options 3 string, answer indeks 0-2 dan feedback. Sertakan objektif terukur, note, audio pendek, speaking bercapah, ideas 3 contoh, frame, examples, assessment. Jangan nilai loghat/kelajuan/kelantangan. Ini draf untuk guru semak.';
+   const model=process.env.OPENAI_MODEL||'gpt-4.1-mini';
    let r:Response|undefined;
    for(let attempt=0;attempt<2;attempt++){
-    r=await fetch(endpoint,{method:'POST',signal:AbortSignal.timeout(25000),headers:{'x-goog-api-key':process.env.GEMINI_API_KEY,'Content-Type':'application/json'},body:requestBody});
-    if(r.status!==503||attempt===1)break;
-    console.warn('Gemini returned 503; retrying once');
+    r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',signal:AbortSignal.timeout(25000),headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model,response_format:{type:'json_object'},messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(input)}]})});
+    if(r.status<500||attempt===1)break;
+    console.warn('OpenAI returned a server error; retrying once');
     await new Promise(resolve=>setTimeout(resolve,1000+Math.floor(Math.random()*500)));
    }
-   if(!r?.ok){const status=r?.status||502;let detail='';try{const err:any=await r?.json();detail=String(err?.error?.status||err?.error?.message||'').slice(0,180);}catch{}console.error('Gemini API request rejected',status,detail);if(status===400||status===401||status===403)throw new AppError('Gemini menolak kunci atau permintaan. Semak GEMINI_API_KEY dan akses Gemini API di Google AI Studio.',502);if(status===404)throw new AppError('Model Gemini tidak ditemui. Semak nilai GEMINI_MODEL di Netlify.',502);if(status===429)throw new AppError('Kuota atau had permintaan Gemini telah dicapai. Semak kuota projek Google AI Studio dan cuba lagi kemudian.',502);if(status===503)throw new AppError('Gemini sedang sesak atau tidak tersedia (503). Sistem sudah cuba semula sekali. Tunggu beberapa minit dan cuba lagi.',502);throw new AppError(`Gemini API membalas ralat ${status}. Cuba lagi kemudian.`,502);}
-   const data:any=await r.json();const text=data.candidates?.[0]?.content?.parts?.map((p:any)=>p.text||'').join('');if(!text)throw new AppError('Gemini tidak memulangkan draf. Cuba jana semula.',502);return json({activity:activitySchema.parse(JSON.parse(text))});
+   if(!r?.ok){const status=r?.status||502;let detail='';try{const err:any=await r?.json();detail=String(err?.error?.code||err?.error?.type||'').slice(0,120);}catch{}console.error('OpenAI API request rejected',status,detail);if(status===400||status===401||status===403)throw new AppError('OpenAI menolak kunci atau permintaan. Semak OPENAI_API_KEY dan tetapan API Platform.',502);if(status===404)throw new AppError('Model OpenAI tidak ditemui. Semak nilai OPENAI_MODEL di Netlify.',502);if(status===429)throw new AppError('Kuota atau had permintaan OpenAI dicapai. Semak billing dan had penggunaan API Platform.',502);if(status>=500)throw new AppError(`Pelayan OpenAI sedang bermasalah (${status}). Sistem sudah cuba semula sekali; cuba lagi kemudian.`,502);throw new AppError(`OpenAI API membalas ralat ${status}. Semak kunci, model dan billing API.`,502);}
+   const data:any=await r.json();const text=data.choices?.[0]?.message?.content;if(!text)throw new AppError('OpenAI tidak memulangkan draf. Cuba jana semula.',502);return json({activity:activitySchema.parse(JSON.parse(text))});
   }
   throw new AppError('Tindakan tidak sah.');
  }catch(e:any){if(e instanceof AppError)return json({error:e.message},e.status);if(e?.name==='ZodError')return json({error:'Semak semua medan aktiviti dan tiga soalan bagi setiap stesen.'},400);console.error('skuad function failed',e?.code||e?.name||'unknown');return json({error:'Operasi tidak berjaya. Input masih dikekalkan. Semak konfigurasi Firebase dan cuba lagi.'},500);}
