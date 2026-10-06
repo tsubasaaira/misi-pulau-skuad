@@ -2,7 +2,7 @@
 
 Mula dengan **PANDUAN_NETLIFY.md**.
 
-Deploy penuh: import source repository ke Netlify; build `npm run build`, publish `dist`, functions `netlify/functions`. Isi Firebase web config, server-only service-account JSON, dan TEACHER_EMAILS. OPENAI_API_KEY adalah pilihan untuk penjana AI.
+Deploy penuh: import source repository ke Netlify; build `npm run build`, publish `dist`, functions `netlify/functions`. Isi Firebase web config dan server-only service-account JSON. Guru boleh daftar dengan Google atau e-mel/kata laluan yang disahkan; setiap guru hanya boleh mengakses aktiviti dan sesi miliknya. OPENAI_API_KEY adalah pilihan untuk penjana AI.
 
 Deploy cepat: muat naik folder `dist` yang telah dibina ke Netlify Drop untuk **demo sahaja**. Folder itu dibina tanpa Firebase config; fungsi guru/sesi/database memerlukan deploy penuh.
 

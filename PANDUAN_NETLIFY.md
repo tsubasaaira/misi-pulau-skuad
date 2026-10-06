@@ -4,7 +4,7 @@
 ZIP ini ialah **versi Netlify + Firebase**, bukan arkib Cloudflare/Sites yang asal.
 
 - Reka bentuk, pulau, tiga stesen, avatar dan mod contoh dikekalkan.
-- Log masuk guru: Google melalui Firebase Authentication.
+- Log masuk guru: Google atau e-mel/kata laluan melalui Firebase Authentication. Akaun e-mel perlu disahkan.
 - Murid: Firebase Authentication Anonymous, kod sesi dan nama panggilan sahaja.
 - Aktiviti, sesi, jawapan dan semakan guru: Firebase Firestore melalui Netlify Functions.
 - AI: API OpenAI di pelayan sahaja; pilihan manual tersedia tanpa kunci AI.
@@ -19,7 +19,7 @@ ZIP ini ialah **versi Netlify + Firebase**, bukan arkib Cloudflare/Sites yang as
 1. Buka https://console.firebase.google.com/ dan cipta / pilih projek milik anda.
 2. Daftar sebuah **Web App** dalam Project settings → General.
 3. Salin nilai `apiKey`, `authDomain`, `projectId`, dan `appId` daripada konfigurasi aplikasi web.
-4. Dalam **Authentication → Sign-in method**, aktifkan **Google** dan **Anonymous**. Lengkapkan support email untuk Google.
+4. Dalam **Authentication → Sign-in method**, aktifkan **Google**, **Email/Password** dan **Anonymous**. Lengkapkan support email untuk Google.
 5. Cipta **Cloud Firestore database**, gunakan database `(default)` dan pilih lokasi yang sesuai.
 6. Dalam tab **Rules**, gantikan dengan kandungan `firestore.rules` dalam ZIP dan tekan Publish. Jangan gunakan test mode terbuka.
 7. Dalam **Project settings → Service accounts**, jana private key untuk Firebase Admin SDK. JSON ini ialah rahsia pelayan. Jangan masukkannya ke GitHub, folder `public`, `dist`, atau medan `VITE_`.
@@ -50,16 +50,13 @@ Dalam tetapan environment variables projek Netlify, masukkan nilai berikut. Pili
 | `VITE_FIREBASE_AUTH_DOMAIN` | Firebase web config `authDomain` | Ya |
 | `VITE_FIREBASE_PROJECT_ID` | Firebase web config `projectId` | Ya |
 | `VITE_FIREBASE_APP_ID` | Firebase web config `appId` | Ya |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Seluruh kandungan service-account JSON, termasuk kurungan `{}` | Ya, rahsia pelayan |
-| `TEACHER_EMAILS` | E-mel akaun Google guru, dipisahkan koma | Ya, rahsia pelayan |
-| `OPENAI_API_KEY` | Kunci API OpenAI milik anda | Untuk AI sahaja |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Seluruh kandungan service-account JSON, termasuk kurungan `{}` | Ya, digunakan di server sahaja |
+| `OPENAI_API_KEY` | Kunci API OpenAI milik anda | Untuk AI sahaja, digunakan di server |
 | `OPENAI_MODEL` | Model yang tersedia untuk akaun API; lalai `gpt-4.1-mini` | Pilihan |
 
-Contoh `TEACHER_EMAILS`: `cikgu1@example.com,cikgu2@example.com`.
+Pendaftaran guru terbuka kepada sesiapa yang mempunyai akaun Google atau mendaftar dengan e-mel/kata laluan. Akaun e-mel perlu mengesahkan alamatnya sebelum log masuk. Oleh sebab pendaftaran terbuka, sesiapa yang mempunyai akaun sah boleh menggunakan ruang guru. Setiap guru hanya boleh melihat aktiviti dan sesi miliknya; murid tanpa nama tidak boleh masuk sebagai guru.
 
-Jika `TEACHER_EMAILS` kosong, **semua akses guru disekat**. Ini menghalang murid yang mempunyai akaun Google daripada masuk sebagai guru. Guru yang dibenarkan tetap hanya boleh mengakses aktiviti dan sesi sendiri.
-
-Untuk `FIREBASE_SERVICE_ACCOUNT_JSON`, salin objek JSON lengkap, tanpa membungkus keseluruhan nilai dalam tanda petikan tambahan. Nilai `private_key` hendaklah kekal dengan escape `\n` yang sah dalam JSON. Gunakan medan secret Netlify; jangan berikan nilai ini kepada murid.
+Untuk `FIREBASE_SERVICE_ACCOUNT_JSON`, salin objek JSON lengkap, tanpa membungkus keseluruhan nilai dalam tanda petikan tambahan. Nilai `private_key` hendaklah kekal dengan escape `\n` yang sah dalam JSON. Jika Netlify Free tidak membenarkan tanda **Contains secret values**, anda boleh simpan sebagai pemboleh ubah biasa. Nilai itu tidak dihantar kepada pelayar kerana tiada awalan `VITE_`, tetapi pemilik dan kolaborator yang boleh mengurus tetapan projek Netlify mungkin dapat melihatnya. Hadkan akses projek kepada orang yang dipercayai dan jangan letak kunci itu di GitHub.
 
 Nilai `VITE_` Firebase ialah konfigurasi awam, bukan kunci Admin SDK. Kunci Admin SDK dan OpenAI mesti kekal pada pelayan. Penggunaan Firebase, Netlify Functions dan API AI tertakluk pada kuota/caj akaun anda.
 
@@ -120,7 +117,7 @@ npm run dev
 | --- | --- |
 | Firebase belum dikonfigurasi | Isi empat `VITE_FIREBASE_*`, kemudian redeploy |
 | Backend Netlify Functions belum tersedia | Gunakan kaedah A; pastikan `netlify/functions/skuad.ts` disertakan |
-| Akaun belum dibenarkan sebagai guru | Semak `TEACHER_EMAILS` dan gunakan akaun Google yang sepadan |
+| Akaun e-mel belum dapat masuk | Klik pautan pengesahan Firebase, kemudian log masuk semula |
 | `auth/unauthorized-domain` | Tambah domain Netlify di Authorized domains Firebase |
 | Popup disekat | Benarkan popup dan cuba log masuk semula |
 | Firebase pelayan belum dikonfigurasi | Isi `FIREBASE_SERVICE_ACCOUNT_JSON` dengan skop Functions |
